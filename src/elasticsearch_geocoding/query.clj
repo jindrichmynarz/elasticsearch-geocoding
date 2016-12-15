@@ -1,12 +1,10 @@
 (ns elasticsearch-geocoding.query
   (:require [elasticsearch-geocoding.elasticsearch :refer [elasticsearch]]
-            [elasticsearch-geocoding.sparql :refer [select-query]]
             [elasticsearch-geocoding.rdf :refer [jsonld->ntriples]]
             [elasticsearch-geocoding.util :refer [->double]]
             [clojurewerkz.elastisch.rest.document :as document]
             [clojurewerkz.elastisch.query :as q]
             [clojurewerkz.elastisch.rest.response :as response]
-            [stencil.core :refer [render-file]]
             [clojure.string :as string]))
 
 ; ----- Private functions -----
@@ -75,24 +73,3 @@
             response/hits-from
             first
             hit->jsonld)))))
-
-(defn sparql-geocode-query
-  "Generate geocoding SPARQL query for `postal-address`."
-  [postal-address]
-  (render-file "geocode.mustache" postal-address))
-
-(defn sparql-geocode
-  "Geocode `postal-address` using a SPARQL query."
-  [{iri :postalAddress
-    :as postal-address}]
-  (let [results (select-query (sparql-geocode-query postal-address))]
-    (when (seq results)
-      (let [{:keys [latitude longitude]} (first results)]
-        {"@context" {"@vocab" "http://schema.org/"}
-         "@id" {"@id" iri}
-         "location" {"latitude" (->double latitude)
-                     "longitude" (->double longitude)}}))))
-
-(def geocode
-  "Geocode `postal-address` using either a SPARQL query or an Elasticsearch query."
-  (some-fn sparql-geocode elasticsearch-geocode))

@@ -1,0 +1,40 @@
+PREFIX ares:   <http://linked.opendata.cz/resource/dataset/ares/>
+PREFIX ruian:  <http://ruian.linked.opendata.cz/ontology/>
+PREFIX schema: <http://schema.org/>
+
+SELECT ?postalAddress ?streetAddress ?postalCode ?addressLocality
+       ?houseNumber ?orientationalNumber ?orientationalNumberLetter
+WHERE {
+  {
+    SELECT ?postalAddress
+    WHERE {
+      {
+        SELECT ?postalAddress
+        WHERE {
+          ?postalAddress a schema:PostalAddress .
+          FILTER NOT EXISTS {
+            [] a schema:GeoCoordinates ;
+              schema:address ?postalAddress .
+          }
+        }
+        ORDER BY ?postalAddress
+      }
+    }
+    LIMIT {{limit}}
+    OFFSET {{offset}}
+  }
+  ?postalAddress schema:postalCode ?postalCode ; 
+    schema:streetAddress ?streetAddress .
+  OPTIONAL {
+    ?postalAddress ruian:cisloDomovni ?houseNumber .
+  }
+  OPTIONAL {
+    ?postalAddress schema:addressLocality ?addressLocality .
+  }
+  OPTIONAL {
+    ?postalAddress ruian:cisloOrientacni ?orientationalNumber .
+  }
+  OPTIONAL {
+    ?postalAddress ruian:cisloOrientacniPismeno ?orientationalNumberLetter .
+  }
+}

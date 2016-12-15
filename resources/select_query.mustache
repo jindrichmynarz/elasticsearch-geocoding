@@ -1,0 +1,18 @@
+PREFIX schema: <http://schema.org/>
+
+SELECT ?resource
+WHERE {
+  {
+    SELECT ?resource
+    WHERE {
+      GRAPH <http://linked.opendata.cz/resource/cuzk.cz/czech-addresses> {
+        ?resource a schema:PostalAddress .
+        [] schema:address ?resource ;
+          schema:geo [] .
+      }
+    }
+    ORDER BY ?resource
+  }
+}
+LIMIT {{limit}}
+OFFSET {{offset}}

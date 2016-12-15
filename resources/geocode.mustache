@@ -1,0 +1,48 @@
+{{!
+@param postalAddress             IRI
+@param addressLocality           str
+@param houseNumber               str
+@param orientationalNumber       str
+@param postalCode                str
+@param streetAddress             str
+}}
+
+PREFIX ruian:  <http://ruian.linked.opendata.cz/ontology/>
+PREFIX schema: <http://schema.org/>
+PREFIX xsd:    <http://www.w3.org/2001/XMLSchema#>
+
+SELECT ?latitude ?longitude
+WHERE {
+  GRAPH <http://linked.opendata.cz/resource/cuzk.cz/czech-addresses> {
+    ?postalAddress a schema:PostalAddress .
+    {
+      {{#postalCode}}
+      ?postalAddress schema:postalCode "{{.}}" .
+      {{/postalCode}}
+    } UNION {
+      {{#addressLocality}}
+      ?postalAddress schema:addressLocality/schema:name "{{.}}" .
+      {{/addressLocality}}
+    }
+    {{#streetAddress}}
+    ?postalAddress schema:streetAddress ?streetAddress .
+    FILTER STRSTARTS("{{.}}", ?streetAddress)
+    {{/streetAddress}}
+
+    {
+      {{#houseNumber}}
+      ?postalAddress ruian:cisloDomovni "{{.}}" .
+      {{/houseNumber}}
+    } UNION {
+      {{#orientationalNumber}}
+      ?postalAddress ruian:cisloOrientacni "{{.}}" .
+      {{/orientationalNumber}}
+    }
+
+    ?place schema:address ?postalAddress ;
+      schema:geo [
+        schema:latitude ?latitude ;
+        schema:longitude ?longitude
+      ] .
+  }
+}

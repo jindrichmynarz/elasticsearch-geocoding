@@ -10,14 +10,14 @@
 ; ----- Private functions -----
 
 (defn- hit->jsonld
-  [{{:keys [location]} :_source
-    id :_id}]
+  [iri
+   {{:keys [location]} :_source}]
   (let [[latitude longitude] (string/split location #",")]
     {"@context" {"@vocab" "http://schema.org/"
                  "xsd" "http://www.w3.org/2001/XMLSchema#"
                  "latitude" {"@type" "xsd:decimal"}
                  "longitude" {"@type" "xsd:decimal"}}
-     "address" {"@id" id}
+     "address" {"@id" iri}
      "geo" {"latitude" latitude
             "longitude" longitude}}))
 
@@ -63,13 +63,14 @@
      :query {:bool pattern}}))
 
 (defn elasticsearch-geocode
-  [postal-address]
+  [{iri :postalAddress
+    :as postal-address}]
   (when (seq (dissoc postal-address :postalAddress))
     (let [{:keys [conn index mapping-type]} elasticsearch
           query (elasticsearch-geocode-query postal-address)
           resp (document/search conn index mapping-type query)]
       (when (response/any-hits? resp)
-        (-> resp
-            response/hits-from
-            first
-            hit->jsonld)))))
+        (->> resp
+             response/hits-from
+             first
+             (hit->jsonld iri))))))

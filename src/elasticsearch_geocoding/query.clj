@@ -31,36 +31,44 @@
                         :query query}
                        params)})
 
+(defn has-only-description?
+  [postal-address]
+  (= (set (keys postal-address)) #{:postalAddress :description}))
+
 ; ----- Public functions -----
 
 (defn elasticsearch-geocode-query
   "Prepare Elasticsearch geocoding query from a postal address."
-  [{:keys [postalAddress streetAddress addressLocality postalCode
-           houseNumber orientationalNumber orientationalNumberLetter]}]
-  (let [must-match (cond-> []
-                     streetAddress (conj (match :streetAddress streetAddress))
-                     (and addressLocality
-                          postalCode) (conj {:bool {:should [(match :addressLocality addressLocality
-                                                                    :prefix_length 3)
-                                                             (match :postalCode postalCode
-                                                                    :boost 3)]}})
-                     (and addressLocality
-                          (not postalCode)) (conj (match :addressLocality addressLocality
-                                                         :prefix_length 3))
-                     (and postalCode
-                          (not addressLocality)) (conj (match :postalCode postalCode
-                                                              :boost 3))
-                     houseNumber (conj (multi-match [:houseNumber :orientationalNumber] houseNumber)))
-        should-match (cond-> []
-                       orientationalNumber (conj (multi-match [:houseNumber :orientationalNumber] 
-                                                              orientationalNumber))
-                       orientationalNumberLetter (conj (match :orientationalNumberLetter 
-                                                              orientationalNumberLetter)))
-        pattern (cond-> {}
-                  (seq must-match) (assoc :must must-match)
-                  (seq should-match) (assoc :should should-match))]
+  [{:keys [postalAddress description streetAddress addressLocality postalCode
+           houseNumber orientationalNumber orientationalNumberLetter]
+    :as postal-address}]
+  (if (has-only-description? postal-address)
     {:_source [:location]
-     :query {:bool pattern}}))
+     :query {:match {:_all description}}}
+    (let [must-match (cond-> []
+                       streetAddress (conj (match :streetAddress streetAddress))
+                       (and addressLocality
+                            postalCode) (conj {:bool {:should [(match :addressLocality addressLocality
+                                                                      :prefix_length 3)
+                                                               (match :postalCode postalCode
+                                                                      :boost 3)]}})
+                       (and addressLocality
+                            (not postalCode)) (conj (match :addressLocality addressLocality
+                                                           :prefix_length 3))
+                       (and postalCode
+                            (not addressLocality)) (conj (match :postalCode postalCode
+                                                                :boost 3))
+                       houseNumber (conj (multi-match [:houseNumber :orientationalNumber] houseNumber)))
+          should-match (cond-> []
+                         orientationalNumber (conj (multi-match [:houseNumber :orientationalNumber]
+                                                                orientationalNumber))
+                         orientationalNumberLetter (conj (match :orientationalNumberLetter
+                                                                orientationalNumberLetter)))
+          pattern (cond-> {}
+                    (seq must-match) (assoc :must must-match)
+                    (seq should-match) (assoc :should should-match))]
+      {:_source [:location]
+       :query {:bool pattern}})))
 
 (defn elasticsearch-geocode
   [{iri :postalAddress

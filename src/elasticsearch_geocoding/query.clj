@@ -46,7 +46,6 @@
     {:_source [:location]
      :query {:match {:_all description}}}
     (let [must-match (cond-> []
-                       streetAddress (conj (match :streetAddress streetAddress))
                        (and addressLocality
                             postalCode) (conj {:bool {:should [(match :addressLocality addressLocality
                                                                       :prefix_length 3)
@@ -57,9 +56,11 @@
                                                            :prefix_length 3))
                        (and postalCode
                             (not addressLocality)) (conj (match :postalCode postalCode
-                                                                :boost 3))
-                       houseNumber (conj (multi-match [:houseNumber :orientationalNumber] houseNumber)))
+                                                                :boost 3)))
           should-match (cond-> []
+                         streetAddress (conj (match :streetAddress streetAddress :boost 2))
+                         description (conj (match :_all description))
+                         houseNumber (conj (multi-match [:houseNumber :orientationalNumber] houseNumber))
                          orientationalNumber (conj (multi-match [:houseNumber :orientationalNumber]
                                                                 orientationalNumber))
                          orientationalNumberLetter (conj (match :orientationalNumberLetter
